@@ -1,13 +1,10 @@
-# Main.py file contains app instance and main function to run app.
+# main.py file contains app instance and main function to run app.
 
 import uvicorn
 from fastapi import FastAPI
 
-app = FastAPI(title = "Transaction Manager",
-              description = "" \
-              "FastAPI + SQLAlchemy PostgreSQL project." \
-              "This project is a simple transaction manager that allows users to" \
-              "manage transactions and group them by categories.",
+app = FastAPI(title = "Employee-Department API",
+              description = "Organizational structure API, used to create dependances between dfferent departments and employees",
               version = "1.0.0")
 
 
