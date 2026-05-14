@@ -4,9 +4,15 @@ from typing import Annotated
 from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
+# Data to connect to db
+user_name = "user"
+user_pass = "pass"
+host = "localhost"
+db_name = "departments"
+
 # Database connection url for PostgreSQL database
 # with asyncpg driver for asynchronous operations.
-DATABASE_URL = "...+...:///"
+DATABASE_URL = f"postgresql+asyncpg://{user_name}:{user_pass}@{host}/{db_name}"
 
 # Async engine for database.
 engine = create_async_engine(DATABASE_URL)
