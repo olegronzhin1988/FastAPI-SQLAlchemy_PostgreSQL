@@ -4,8 +4,7 @@ import uvicorn
 from fastapi import FastAPI
 from contextlib import asynccontextmanager
 from database import engine, Model
-from routers.departments import departments_router
-from routers.employees import employees_router
+from routers.departments_employees import departments_employees_router
 
 # Decorated lifespan function, activates database connection
 # on app/server launch.
@@ -24,7 +23,7 @@ app = FastAPI(lifespan = lifespan,
               version = "1.0.0")
 
 # Connecting routers
-app.include_router(departments_router, employees_router)
+app.include_router(departments_employees_router)
 
 # Default wellcome root GET endpoint
 @app.get("/")
