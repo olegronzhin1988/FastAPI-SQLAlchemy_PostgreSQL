@@ -1,0 +1,29 @@
+services:
+  db:
+# Postgres image, official
+    image: postgres:17
+# Container name           
+    container_name: departments   
+    environment:
+# Database login
+      POSTGRES_USER: user
+# Database password          
+      POSTGRES_PASSWORD: pass
+# Database name
+      POSTGRES_DB: departments    
+    ports:
+# Port to connect
+      - "5432:5432"
+# Volume to save data      
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+# Check if DB ready or not
+    healthcheck:        
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+# Volume for DB saves
+  postgres_data:

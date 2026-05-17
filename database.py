@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 # Data to connect to db
 user_name = "user"
 user_pass = "pass"
-host = "localhost"
+host = "localhost:5432"
 db_name = "departments"
 
 # Database connection url for PostgreSQL database
