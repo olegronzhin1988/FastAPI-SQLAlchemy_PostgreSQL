@@ -5,7 +5,7 @@ from database import SessionDep
 from schemas.departments import SDepartmentAdd, SDepartment
 from schemas.employees import SEmployee, SEmployeeAdd
 from models.departments_employees import DepartmentsModel, EmployeesModel
-from sqlalchemy import select, update, delete
+from sqlalchemy import select, update
 from datetime import datetime
 from enum import Enum
 from typing import Optional
@@ -42,7 +42,7 @@ async def department_add(session:SessionDep,
     department_dict = department_in.model_dump()
     department_dict["name"] = department_dict["name"].strip()
     department_dict["created_at"] = datetime.now()
-
+    department_dict["id"] = None
     if department_dict["parent_id"] is not None:
         await department_check(department_dict["parent_id"], session)
 

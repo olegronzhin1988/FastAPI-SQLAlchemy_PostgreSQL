@@ -20,7 +20,7 @@ engine = create_async_engine(DATABASE_URL)
 # Session for engine.
 # Expire_on_commit is set to False to prevent automatic 
 # expiration of objects after commit.
-session = async_sessionmaker(engine, expire_on_commit=False)
+new_session = async_sessionmaker(engine, expire_on_commit=False)
 
 # Parent class for project chart/sheet classes.
 class Model(MappedAsDataclass, DeclarativeBase):
@@ -28,7 +28,7 @@ class Model(MappedAsDataclass, DeclarativeBase):
 
 # Dependency function to get a database session.
 async def get_db():
-    async with session() as session:
+    async with new_session() as session:
         yield session
 
 # Database session dependency. Automatically provides
