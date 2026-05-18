@@ -10,19 +10,42 @@ from datetime import datetime, date
 # Department model
 class DepartmentsModel(Model):
     __tablename__ = "departments"
-
+# parameters
     id: Mapped[int]  = mapped_column(primary_key = True, init = False)
     name: Mapped[str]
-    parent_id: Mapped[Optional[int]] = mapped_column(default=None)
+    parent_id: Mapped[Optional[int]] = mapped_column(ForeignKey("departments.id"), default=None)
     created_at: Mapped[datetime] = mapped_column(default=datetime.now)
 
-    employees: Mapped[List["EmployeesModel"]] = relationship(back_populates="department", cascade="all, delete-orphan", init = False, default_factory=list, lazy="selectin")
+# relationships
+#  departmnet->employees, one to many
+    employees: Mapped[List["EmployeesModel"]] = relationship(
+        back_populates="department", 
+        cascade="all, delete-orphan",
+        uselist = True, 
+        init = False,
+        default_factory=list, 
+        lazy="selectin")
+    
+# parent -> children, one to many, self-referential
+    children: Mapped[List["DepartmentsModel"]] = relationship(
+        back_populates="parent",
+        init = False,
+        remote_side=[id],
+        uselist = True,
+        default_factory=list,
+        lazy = "selectin")
 
+# children ->parent, many to one, self-referential    
+    parent: Mapped[Optional["DepartmentsModel"]] = relationship(
+        back_populates="children",
+        init = False,
+        cascade="all, delete-orphan")
 
 # Employee model
 class EmployeesModel(Model):
     __tablename__= "employees"
 
+# parameters
     id: Mapped[int] = mapped_column(primary_key = True, init = False)
     department_id: Mapped[int] = mapped_column(ForeignKey("departments.id"))
     full_name: Mapped[str]
@@ -30,4 +53,6 @@ class EmployeesModel(Model):
     hired_at: Mapped[Optional[date]] = mapped_column(default = None)
     created_at: Mapped[datetime] = mapped_column(default = datetime.now)
 
+# relationships
+# employee->department, many to one
     department: Mapped[DepartmentsModel] = relationship(back_populates="employees", init = False)    

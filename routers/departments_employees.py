@@ -42,7 +42,7 @@ async def department_add(session:SessionDep,
     department_dict = department_in.model_dump()
     department_dict["name"] = department_dict["name"].strip()
     department_dict["created_at"] = datetime.now()
-    department_dict["id"] = None
+
     if department_dict["parent_id"] is not None:
         await department_check(department_dict["parent_id"], session)
 
