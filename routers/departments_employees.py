@@ -89,30 +89,19 @@ async def department_get(session:SessionDep,
 
     department = await department_check(id, session)
 
-    if include_employees:
-        query = select(EmployeesModel).where(EmployeesModel.department_id == id)
-        result = await session.execute(query)
-        employees_found = result.scalars().all()
-        if employees_found:
-            employees.extend(employees_found)
-
-    parent_ids = [department.id]
-    for i in range(1, depth + 1):
-        if not parent_ids:
-            break
-
-        query = select(DepartmentsModel).where(DepartmentsModel.parent_id.in_(parent_ids))
-        result = await session.execute(query)
-        children_found = result.scalars().all()
-        parent_ids = []
-        if children_found:
-            parent_ids = [child.id for child in children_found]
-            children[f"depth {i}"] = children_found
+    query = select(DepartmentsModel).where(DepartmentsModel.id == id)
+    result = await session.execute(query)
+    department = result.scalar_one_or_none()
+    if department is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                            detail=f"There is no department with id: {id}.")
+    
+#    if include_employees:  
+#       employees = department.employees
 
     return {
-        "department": department,
-        "employees": employees,
-        "children": children
+        "department": SDepartment.model_validate(department)
+#        "employees": [EmployeesModel.model_validate(employee) for employee in employees]
     }
 
 # PATCH department 
