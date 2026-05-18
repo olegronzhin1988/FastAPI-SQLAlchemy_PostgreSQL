@@ -88,16 +88,14 @@ async def department_get(session:SessionDep,
     children = {}
 
     department = await department_check(id, session)
-
-    query = select(DepartmentsModel).where(DepartmentsModel.id == id)
-    result = await session.execute(query)
-    department = result.scalar_one_or_none()
-    if department is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
-                            detail=f"There is no department with id: {id}.")
-    
-    if include_employees:  
-       employees = department.employees
+    if department:
+        if include_employees:  
+            employees = department.employees
+            if employees:
+                employees = [SEmployee.model_validate(employee) for employee in employees]
+                employees = sorted(employees, key=lambda x: x.full_name)
+            else:
+                employees = []
 
     return {
         "department": SDepartment.model_validate(department),
