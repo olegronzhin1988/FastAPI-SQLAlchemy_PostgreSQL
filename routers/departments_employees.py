@@ -96,12 +96,12 @@ async def department_get(session:SessionDep,
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
                             detail=f"There is no department with id: {id}.")
     
-#    if include_employees:  
-#       employees = department.employees
+    if include_employees:  
+       employees = department.employees
 
     return {
-        "department": SDepartment.model_validate(department)
-#        "employees": [EmployeesModel.model_validate(employee) for employee in employees]
+        "department": SDepartment.model_validate(department),
+        "employees": [SEmployee.model_validate(employee) for employee in employees]
     }
 
 # PATCH department 
