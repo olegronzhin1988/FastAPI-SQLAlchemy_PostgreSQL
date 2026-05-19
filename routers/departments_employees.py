@@ -96,7 +96,7 @@ async def department_get(session:SessionDep,
                 employees = sorted(employees, key=lambda x: x.full_name)
             else:
                 employees = []
-
+        
     return {
         "department": SDepartment.model_validate(department),
         "employees": [SEmployee.model_validate(employee) for employee in employees]

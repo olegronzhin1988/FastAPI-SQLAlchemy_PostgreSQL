@@ -30,8 +30,8 @@ class DepartmentsModel(Model):
     children: Mapped[List["DepartmentsModel"]] = relationship(
         back_populates="parent",
         init = False,
-        remote_side=[id],
         uselist = True,
+        cascade="all, delete-orphan",
         default_factory=list,
         lazy = "selectin")
 
@@ -39,7 +39,7 @@ class DepartmentsModel(Model):
     parent: Mapped[Optional["DepartmentsModel"]] = relationship(
         back_populates="children",
         init = False,
-        cascade="all, delete-orphan")
+        remote_side=[id])
 
 # Employee model
 class EmployeesModel(Model):
