@@ -29,17 +29,18 @@ class DepartmentsModel(Model):
 # parent -> children, one to many, self-referential
     children: Mapped[List["DepartmentsModel"]] = relationship(
         back_populates="parent",
+        cascade="all, delete-orphan",
         init = False,
         uselist = True,
-        cascade="all, delete-orphan",
         default_factory=list,
-        lazy = "selectin")
+        collection_class = list,
+        lazy = "dynamic")  #dynamic worked?
 
 # children ->parent, many to one, self-referential    
     parent: Mapped[Optional["DepartmentsModel"]] = relationship(
         back_populates="children",
-        init = False,
-        remote_side=[id])
+        remote_side=[id],
+        init = False)
 
 # Employee model
 class EmployeesModel(Model):

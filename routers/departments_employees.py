@@ -85,7 +85,7 @@ async def department_get(session:SessionDep,
                          include_employees:bool=True,
                          depth:int=1):
     employees = []
-    children = {}
+    children = []
 
     department = await department_check(id, session)
     if department:
@@ -96,10 +96,14 @@ async def department_get(session:SessionDep,
                 employees = sorted(employees, key=lambda x: x.full_name)
             else:
                 employees = []
-        
+        query = department.children
+        children = await session.execute(query)
+        children = children.scalars().all()
+        children = [SDepartment.model_validate(child) for child in children]
     return {
         "department": SDepartment.model_validate(department),
-        "employees": [SEmployee.model_validate(employee) for employee in employees]
+        "employees": employees,
+        "children": children
     }
 
 # PATCH department 
