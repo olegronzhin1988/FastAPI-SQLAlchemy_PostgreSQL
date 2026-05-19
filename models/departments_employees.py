@@ -34,7 +34,8 @@ class DepartmentsModel(Model):
         uselist = True,
         default_factory=list,
         collection_class = list,
-        lazy = "dynamic")  #dynamic worked?
+        lazy = "selectin",
+        join_depth=5)  #dynamic worked?
 
 # children ->parent, many to one, self-referential    
     parent: Mapped[Optional["DepartmentsModel"]] = relationship(

@@ -84,22 +84,27 @@ async def department_get(session:SessionDep,
                          id:int,
                          include_employees:bool=True,
                          depth:int=1):
+
+# Creating lists
     employees = []
     children = []
 
+# Check if there is department with such id
     department = await department_check(id, session)
+
     if department:
+
+# Looking for employees if necessary
         if include_employees:  
             employees = department.employees
-            if employees:
-                employees = [SEmployee.model_validate(employee) for employee in employees]
-                employees = sorted(employees, key=lambda x: x.full_name)
-            else:
-                employees = []
-        query = department.children
-        children = await session.execute(query)
-        children = children.scalars().all()
-        children = [SDepartment.model_validate(child) for child in children]
+            employees = [SEmployee.model_validate(employee) for employee in employees]
+            employees = sorted(employees, key=lambda x: x.full_name)
+
+# Looking for children
+        children_found = department.children
+        children = [SDepartment.model_validate(child) for child in children_found]
+
+
     return {
         "department": SDepartment.model_validate(department),
         "employees": employees,
