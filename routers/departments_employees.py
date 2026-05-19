@@ -5,7 +5,7 @@ from database import SessionDep
 from schemas.departments import SDepartmentAdd, SDepartment
 from schemas.employees import SEmployee, SEmployeeAdd
 from models.departments_employees import DepartmentsModel, EmployeesModel
-from sqlalchemy import select, update
+from sqlalchemy import select, update, null
 from datetime import datetime
 from enum import Enum
 from typing import Optional
@@ -85,6 +85,22 @@ async def department_get(session:SessionDep,
                          include_employees:bool=True,
                          depth:int=1):
 
+# Function for children if depth > 1
+    def children_tree(department:DepartmentsModel, end_depth:int = 1, current_depth:int = 0) -> dict:
+
+        data = {
+            "id": department.id,
+            "name": department.name,
+            "parent_id":department.parent_id,
+            "created_at":department.created_at,
+            "children":[]
+        }
+        if current_depth < end_depth:
+            data["children"] = [children_tree(child, end_depth, current_depth+1) for child in department.children if child]
+            if current_depth == end_depth-1 or not data["children"]:
+                del data["children"]
+            return data
+        
 # Creating lists
     employees = []
     children = []
@@ -101,9 +117,10 @@ async def department_get(session:SessionDep,
             employees = sorted(employees, key=lambda x: x.full_name)
 
 # Looking for children
-        children_found = department.children
-        children = [SDepartment.model_validate(child) for child in children_found]
-
+        if depth == 1:
+            children = [SDepartment.model_validate(child) for child in department.children]
+        if 1< depth <=5 :
+            children = [children_tree(child, end_depth=depth) for child in department.children]
 
     return {
         "department": SDepartment.model_validate(department),
