@@ -25,6 +25,10 @@ async def department_check(id:int, session:SessionDep):
                             detail=f"There is no department with id: {id}.")
     return department
 
+# Function for bad request HTTPException
+def bad_request_exception(detail):
+    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                        detail= detail)
 
 # Router for departments.
 departments_employees_router = APIRouter(prefix="/departments",
@@ -54,8 +58,7 @@ async def department_add(session:SessionDep,
     result = await session.execute(query)
     department = result.scalar_one_or_none()
     if department is not None:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
-                            detail=f"Department name {department_dict['name']} with such parent_id already exists.")
+        bad_request_exception(detail=f"Department name {department_dict['name']} with such parent_id already exists.")
 
 # Creating DepartmentsModel object to add to db:
     new_department = DepartmentsModel(**department_dict)
@@ -139,37 +142,54 @@ async def department_update(session:SessionDep,
                             id:int,
                             name:Optional[str] = None,
                             parent_id:Optional[int|None] = None):
+
+# Check if there is department with such id    
     department_to_update = await department_check(id, session)
 
+# No data for new parent department was given
     if name is None and parent_id is None:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
-                            detail="No name or parent_id were given")
+        bad_request_exception(detail="No name or parent_id were given")
 
-    if name is not None:
-        department_to_update.name = name.strip()
+# Looking for new parent department
+    conditions =[]
+    details=f"No department with "
+    if name:
+        conditions.append(DepartmentsModel.name == name.strip())
+        details += f"name {name.strip()} "
+        if parent_id:
+            details += "and "
+    if parent_id:
+        conditions.append(DepartmentsModel.id == parent_id)
+        details += f"id {parent_id}"
 
-    if parent_id is not None:
-        if parent_id == id:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
-                                detail="A department cannot be its own parent")
+    query = select(DepartmentsModel).where(*conditions)
+    result = await session.execute(query)
+    new_parent = result.scalar_one_or_none()
 
-        new_parent = await department_check(parent_id, session)
+# New parent department wasn`t found 
+    if not new_parent:
+        bad_request_exception(detail=details)
 
-        parents_id = []
-        current_parent = new_parent
-        while current_parent is not None:
-            if current_parent.id == id:
-                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
-                                    detail=f"Department {id} cannot be moved under its own descendant")
-            parents_id.append(current_parent.id)
-            current_parent = current_parent.parent
+# New parent department exists
+    else:
 
-        department_to_update.parent_id = parent_id
+# Exception: id and new parent id are the same
+        if new_parent.id == id:
+            bad_request_exception(detail="A department cannot be its own parent")
 
-    session.add(department_to_update)
-    await session.commit()
-    await session.refresh(department_to_update)
-    return department_to_update
+# Check if department to update is a parent of its new parent or not 
+            current_parent = new_parent
+            while current_parent is not None:
+                if id == current_parent.id:
+                    bad_request_exception(detail=f"Department {id} cannot be moved under its own descendant")
+                current_parent = current_parent.parent
+
+# Updating department to update
+            query = update(DepartmentsModel).where(DepartmentsModel.id == id).values(parent_id = 2)
+            await session.execute(query)
+            await session.commit()
+            await session.refresh(department_to_update)
+            return department_to_update
 
 # DELETE department
 # Delete department, its employees and subdepartments
@@ -187,11 +207,11 @@ async def department_delete(session:SessionDep,
 
     if mode == DeleteMode.REASSIGN:
         if reassign_to_department_id is None:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
-                                detail="reassign_to_department_id is required in reassign mode")
+            bad_request_exception(detail="reassign_to_department_id is required in reassign mode")
+
         if reassign_to_department_id == id:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
-                                detail="cannot reassign employees to the same department")
+            bad_request_exception(detail="cannot reassign employees to the same department")
+
         await department_check(reassign_to_department_id, session)
 
         query = update(EmployeesModel).where(EmployeesModel.department_id == id).values(department_id=reassign_to_department_id)
@@ -223,8 +243,7 @@ async def employee_add(session:SessionDep,
     employee = result.scalar_one_or_none()
 
     if employee:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
-                            detail=f"Employee with full name {employee_dict['full_name']} already exists in department {employee_dict['department_id']}")
+        bad_request_exception(detail=f"Employee with full name {employee_dict['full_name']} already exists in department {employee_dict['department_id']}")
 
     new_employee = EmployeesModel(**employee_dict)
     session.add(new_employee)
