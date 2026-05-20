@@ -218,7 +218,6 @@ async def department_delete(session:SessionDep,
 
 # Reassign employees if necessary
     if mode == DeleteMode.REASSIGN:
-        print(1)
         if reassign_to_department_id is None:
             bad_request_exception(detail="reassign_to_department_id is required in reassign mode")
 
@@ -227,7 +226,6 @@ async def department_delete(session:SessionDep,
 
 # Check if there is department to reassign employees
         await department_check(reassign_to_department_id, session)
-        print("dep_to_reassign:", reassign_to_department_id)
         query = update(EmployeesModel).where(EmployeesModel.department_id == id).values(department_id=reassign_to_department_id)
         await session.execute(query)
         await session.commit()
@@ -236,7 +234,6 @@ async def department_delete(session:SessionDep,
         await session.refresh(department_to_delete)
 
 # delete department
-    print(20)
     await session.delete(department_to_delete)
     await session.commit()
 
