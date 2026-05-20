@@ -212,23 +212,31 @@ async def department_delete(session:SessionDep,
                             id:int,
                             mode:DeleteMode,
                             reassign_to_department_id:Optional[int|None] = None):
+    
+# Check if there is department with such id   
     department_to_delete = await department_check(id, session)
 
 # Reassign employees if necessary
     if mode == DeleteMode.REASSIGN:
+        print(1)
         if reassign_to_department_id is None:
             bad_request_exception(detail="reassign_to_department_id is required in reassign mode")
 
         if reassign_to_department_id == id:
             bad_request_exception(detail="cannot reassign employees to the same department")
 
+# Check if there is department to reassign employees
         await department_check(reassign_to_department_id, session)
-
+        print("dep_to_reassign:", reassign_to_department_id)
         query = update(EmployeesModel).where(EmployeesModel.department_id == id).values(department_id=reassign_to_department_id)
         await session.execute(query)
         await session.commit()
 
+# Updating department to delete
+        await session.refresh(department_to_delete)
+
 # delete department
+    print(20)
     await session.delete(department_to_delete)
     await session.commit()
 
@@ -240,22 +248,27 @@ async def department_delete(session:SessionDep,
                                    description='add new employee')
 async def employee_add(session:SessionDep,
                        employee_in:SEmployeeAdd) -> SEmployee:
+
+# Creating employee dict from import data    
     employee_dict = employee_in.model_dump()
     employee_dict["full_name"] = employee_dict["full_name"].strip()
     employee_dict["created_at"] = datetime.now()
 
+# Check if there is department with such id   
     await department_check(employee_dict["department_id"], session)
 
+# Check if there is employee with the same name in this department
     query = select(EmployeesModel).where(
         EmployeesModel.department_id == employee_dict["department_id"],
-        EmployeesModel.full_name == employee_dict["full_name"]
-    )
+        EmployeesModel.full_name == employee_dict["full_name"])
     result = await session.execute(query)
     employee = result.scalar_one_or_none()
 
+# Exception - employee with this name already exists in this department
     if employee:
         bad_request_exception(detail=f"Employee with full name {employee_dict['full_name']} already exists in department {employee_dict['department_id']}")
 
+# Assigning employee to department
     new_employee = EmployeesModel(**employee_dict)
     session.add(new_employee)
     await session.commit()
