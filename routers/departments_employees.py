@@ -146,61 +146,58 @@ async def department_update(session:SessionDep,
 # Check if there is department with such id    
     department_to_update = await department_check(id, session)
 
-# No data for new parent department was given
-    if name is None and parent_id is None:
-        bad_request_exception(detail="No name or parent_id were given")
-
-# Looking for new parent department
-    conditions =[]
-    details=f"No department with "
-    if name:
-        conditions.append(DepartmentsModel.name == name.strip())
-        details += f"name {name.strip()} "
+# Looking for new parent department if name and/or id were given:
+    if name or parent_id:
+        conditions =[]
+        details=f"No department with "
+        if name:
+            conditions.append(DepartmentsModel.name == name.strip())
+            details += f"name {name.strip()} "
+            if parent_id:
+                details += "and "
         if parent_id:
-            details += "and "
-    if parent_id:
-        conditions.append(DepartmentsModel.id == parent_id)
-        details += f"id {parent_id}"
+            conditions.append(DepartmentsModel.id == parent_id)
+            details += f"id {parent_id}"
 
-    query = select(DepartmentsModel).where(*conditions)
-    result = await session.execute(query)
-    new_parent = result.scalar_one_or_none()
+        query = select(DepartmentsModel).where(*conditions)
+        result = await session.execute(query)
+        new_parent = result.scalar_one_or_none()
 
 # New parent department wasn`t found 
-    if not new_parent:
-        bad_request_exception(detail=details)
+        if not new_parent:
+            bad_request_exception(detail=details)
 
 # New parent department exists
-    else:
+        else:
 
 # Exception: id and new parent id are the same
-        if new_parent.id == id:
-            bad_request_exception(detail="A department cannot be its own parent")
+            if new_parent.id == id:
+                bad_request_exception(detail="A department cannot be its own parent")
 
 # Check if department to update is a parent of its new parent or not 
-        current_parent = new_parent
-        while current_parent:
-            if id == current_parent.id:
-                bad_request_exception(detail=f"Department {id} cannot be moved under its own descendant")
-            if current_parent.parent_id:
-                query = select(DepartmentsModel).where(DepartmentsModel.id == current_parent.parent_id)
-                result = await session.execute(query)
-                current_parent = result.scalar_one_or_none()
-            else:
-                break
+            current_parent = new_parent
+            while current_parent:
+                if id == current_parent.id:
+                    bad_request_exception(detail=f"Department {id} cannot be moved under its own descendant")
+                if current_parent.parent_id:
+                    query = select(DepartmentsModel).where(DepartmentsModel.id == current_parent.parent_id)
+                    result = await session.execute(query)
+                    current_parent = result.scalar_one_or_none()
+                else:
+                    break
 
 # Updating department to update
-        query = update(DepartmentsModel).where(DepartmentsModel.id == id).values(parent_id = new_parent.id)
-        await session.execute(query)
-        await session.commit()
-        query = select(DepartmentsModel).where(DepartmentsModel.id == id)
-        result = await session.execute(query)
-        updated_department = result.scalar_one_or_none()
-        if updated_department:
-            return updated_department
-        else:
-            raise HTTPException(status_code = status.HTTP_404_NOT_FOUND,
-                                detail = f"Department with id {id} wasn`t found. Something wrong")
+    query = update(DepartmentsModel).where(DepartmentsModel.id == id).values(parent_id = parent_id)
+    await session.execute(query)
+    await session.commit()
+    query = select(DepartmentsModel).where(DepartmentsModel.id == id)
+    result = await session.execute(query)
+    updated_department = result.scalar_one_or_none()
+    if updated_department:
+        return updated_department
+    else:
+        raise HTTPException(status_code = status.HTTP_404_NOT_FOUND,
+                            detail = f"Department with id {id} wasn`t found. Something wrong")
     
 
 # DELETE department
@@ -217,6 +214,7 @@ async def department_delete(session:SessionDep,
                             reassign_to_department_id:Optional[int|None] = None):
     department_to_delete = await department_check(id, session)
 
+# Reassign employees if necessary
     if mode == DeleteMode.REASSIGN:
         if reassign_to_department_id is None:
             bad_request_exception(detail="reassign_to_department_id is required in reassign mode")
@@ -230,6 +228,7 @@ async def department_delete(session:SessionDep,
         await session.execute(query)
         await session.commit()
 
+# delete department
     await session.delete(department_to_delete)
     await session.commit()
 
