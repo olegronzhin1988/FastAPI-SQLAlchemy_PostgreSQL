@@ -178,18 +178,30 @@ async def department_update(session:SessionDep,
             bad_request_exception(detail="A department cannot be its own parent")
 
 # Check if department to update is a parent of its new parent or not 
-            current_parent = new_parent
-            while current_parent is not None:
-                if id == current_parent.id:
-                    bad_request_exception(detail=f"Department {id} cannot be moved under its own descendant")
-                current_parent = current_parent.parent
+        current_parent = new_parent
+        while current_parent:
+            if id == current_parent.id:
+                bad_request_exception(detail=f"Department {id} cannot be moved under its own descendant")
+            if current_parent.parent_id:
+                query = select(DepartmentsModel).where(DepartmentsModel.id == current_parent.parent_id)
+                result = await session.execute(query)
+                current_parent = result.scalar_one_or_none()
+            else:
+                break
 
 # Updating department to update
-            query = update(DepartmentsModel).where(DepartmentsModel.id == id).values(parent_id = 2)
-            await session.execute(query)
-            await session.commit()
-            await session.refresh(department_to_update)
-            return department_to_update
+        query = update(DepartmentsModel).where(DepartmentsModel.id == id).values(parent_id = new_parent.id)
+        await session.execute(query)
+        await session.commit()
+        query = select(DepartmentsModel).where(DepartmentsModel.id == id)
+        result = await session.execute(query)
+        updated_department = result.scalar_one_or_none()
+        if updated_department:
+            return updated_department
+        else:
+            raise HTTPException(status_code = status.HTTP_404_NOT_FOUND,
+                                detail = f"Department with id {id} wasn`t found. Something wrong")
+    
 
 # DELETE department
 # Delete department, its employees and subdepartments

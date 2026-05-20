@@ -41,7 +41,8 @@ class DepartmentsModel(Model):
     parent: Mapped[Optional["DepartmentsModel"]] = relationship(
         back_populates="children",
         remote_side=[id],
-        init = False)
+        init = False,
+        lazy = "noload")
 
 # Employee model
 class EmployeesModel(Model):
