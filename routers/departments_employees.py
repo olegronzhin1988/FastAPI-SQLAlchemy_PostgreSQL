@@ -137,7 +137,7 @@ async def department_get(session:SessionDep,
 # parent_id: int|None, change or remove parent department
 @departments_employees_router.patch("/{id}",
                                     status_code=status.HTTP_202_ACCEPTED,
-                                    description='change department name and/or parent')
+                                    description='change department parent by name or id')
 async def department_update(session:SessionDep,
                             id:int,
                             name:Optional[str] = None,
@@ -146,19 +146,21 @@ async def department_update(session:SessionDep,
 # Check if there is department with such id    
     department_to_update = await department_check(id, session)
 
+    if not name and not parent_id:
+        new_parent_id = parent_id
+
 # Looking for new parent department if name and/or id were given:
     if name or parent_id:
         conditions =[]
         details=f"No department with "
         if name:
-            conditions.append(DepartmentsModel.name == name.strip())
+            conditions.append(DepartmentsModel.name == name)
             details += f"name {name.strip()} "
             if parent_id:
                 details += "and "
         if parent_id:
             conditions.append(DepartmentsModel.id == parent_id)
             details += f"id {parent_id}"
-
         query = select(DepartmentsModel).where(*conditions)
         result = await session.execute(query)
         new_parent = result.scalar_one_or_none()
@@ -185,9 +187,10 @@ async def department_update(session:SessionDep,
                     current_parent = result.scalar_one_or_none()
                 else:
                     break
+        new_parent_id = new_parent.id
 
 # Updating department to update
-    query = update(DepartmentsModel).where(DepartmentsModel.id == id).values(parent_id = parent_id)
+    query = update(DepartmentsModel).where(DepartmentsModel.id == id).values(parent_id = new_parent_id)
     await session.execute(query)
     await session.commit()
     query = select(DepartmentsModel).where(DepartmentsModel.id == id)
