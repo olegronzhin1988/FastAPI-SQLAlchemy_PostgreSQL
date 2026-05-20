@@ -212,6 +212,8 @@ class TestIntegration:
         )
         assert patch_response.status_code == 202
 
+        await client.get("/")
+
         # 6. Verify new hierarchy
         response = await client.get(f"/departments/{sales_id}?depth=1")
         data = response.json()
