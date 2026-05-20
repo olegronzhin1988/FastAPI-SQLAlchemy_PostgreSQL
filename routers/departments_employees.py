@@ -144,80 +144,64 @@ async def department_update(session:SessionDep,
                             parent_id:Optional[int|None] = None):
 
 # Check if there is department with such id    
-    # Check if there is department with such id
     department_to_update = await department_check(id, session)
 
-    # Variable to store the new parent ID
-    new_parent_id = None
+    if not name and not parent_id:
+        new_parent_id = parent_id
 
-    # Looking for new parent department if name and/or id were given:
+# Looking for new parent department if name and/or id were given:
     if name or parent_id:
-        conditions = []
-        details = "No department with "
+        conditions =[]
+        details=f"No department with "
         if name:
-            conditions.append(DepartmentsModel.name == name.strip())
+            conditions.append(DepartmentsModel.name == name)
             details += f"name {name.strip()} "
             if parent_id:
                 details += "and "
         if parent_id:
             conditions.append(DepartmentsModel.id == parent_id)
             details += f"id {parent_id}"
-
         query = select(DepartmentsModel).where(*conditions)
         result = await session.execute(query)
         new_parent = result.scalar_one_or_none()
 
-        # New parent department wasn't found
+# New parent department wasn`t found 
         if not new_parent:
             bad_request_exception(detail=details)
 
-        # New parent department exists
+# New parent department exists
         else:
-            # Exception: id and new parent id are the same
+
+# Exception: id and new parent id are the same
             if new_parent.id == id:
                 bad_request_exception(detail="A department cannot be its own parent")
 
-            # Check if department to update is a parent of its new parent or not
-            visited = set()
+# Check if department to update is a parent of its new parent or not 
             current_parent = new_parent
             while current_parent:
-                if current_parent.id in visited:
-                    bad_request_exception(detail="Circular reference detected")
-                visited.add(current_parent.id)
-                
                 if id == current_parent.id:
                     bad_request_exception(detail=f"Department {id} cannot be moved under its own descendant")
-                
                 if current_parent.parent_id:
-                    # Используем запрос для загрузки родителя
-                    parent_query = select(DepartmentsModel).where(DepartmentsModel.id == current_parent.parent_id)
-                    parent_result = await session.execute(parent_query)
-                    current_parent = parent_result.scalar_one_or_none()
+                    query = select(DepartmentsModel).where(DepartmentsModel.id == current_parent.parent_id)
+                    result = await session.execute(query)
+                    current_parent = result.scalar_one_or_none()
                 else:
                     break
+        new_parent_id = new_parent.id
 
-            # Store the found parent's ID for the update
-            new_parent_id = new_parent.id
-
-    # Determine the final parent_id for the update
-    final_parent_id = new_parent_id if new_parent_id is not None else parent_id
-
-    # Updating department
-    query = update(DepartmentsModel).where(DepartmentsModel.id == id).values(parent_id=final_parent_id)
+# Updating department to update
+    query = update(DepartmentsModel).where(DepartmentsModel.id == id).values(parent_id = new_parent_id)
     await session.execute(query)
     await session.commit()
-
-    # Refresh and return updated department
     query = select(DepartmentsModel).where(DepartmentsModel.id == id)
     result = await session.execute(query)
     updated_department = result.scalar_one_or_none()
-    
     if updated_department:
-        # ✅ IMPORTANT FIX: Return Pydantic schema, NOT ORM object
         return SDepartment.model_validate(updated_department)
     else:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
-                            detail=f"Department with id {id} wasn't found. Something wrong")  
+        raise HTTPException(status_code = status.HTTP_404_NOT_FOUND,
+                            detail = f"Department with id {id} wasn`t found. Something wrong")
+
 
 # DELETE department
 # Delete department, its employees and subdepartments

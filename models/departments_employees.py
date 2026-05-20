@@ -42,7 +42,7 @@ class DepartmentsModel(Model):
         back_populates="children",
         remote_side=[id],
         init = False,
-        lazy = "select")
+        lazy = "noload")
 
 # Employee model
 class EmployeesModel(Model):
