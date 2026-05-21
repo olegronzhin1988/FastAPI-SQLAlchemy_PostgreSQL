@@ -104,7 +104,7 @@ alembic upgrade head
 ### 6. Start the application
 
 ```bash
-uvicorn main:app --reload
+python main.py
 ```
 
 API will be available at `http://127.0.0.1:8000`.
