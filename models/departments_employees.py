@@ -1,7 +1,7 @@
 # departments_employees.py model file, contains table models for departments and employees
 
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy import ForeignKey
+from sqlalchemy import ForeignKey, Integer
 from typing import List, Optional
 from database import Model
 from datetime import datetime, date
@@ -13,7 +13,11 @@ class DepartmentsModel(Model):
 # parameters
     id: Mapped[int]  = mapped_column(primary_key = True, init = False)
     name: Mapped[str]
-    parent_id: Mapped[Optional[int]] = mapped_column(ForeignKey("departments.id"), default=None)
+    parent_id: Mapped[int|None] = mapped_column(
+        Integer, 
+        ForeignKey("departments.id", ondelete="CASCADE"),
+        nullable=True, 
+        default=None)
     created_at: Mapped[datetime] = mapped_column(default=datetime.now)
 
 # relationships

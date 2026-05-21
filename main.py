@@ -10,8 +10,10 @@ from routers.departments_employees import departments_employees_router
 # on app/server launch.
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    async with engine.begin() as conn:
-        await conn.run_sync(Model.metadata.create_all)
+
+# Commented this out because of Alembic
+#    async with engine.begin() as conn:
+#        await conn.run_sync(Model.metadata.create_all)
     print("PostgreSQL DB connected")
     yield
     print("Database desconected")
