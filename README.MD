@@ -66,10 +66,14 @@ git clone <repository-url>
 cd <repository-folder>
 ```
 
-### 2. Install dependencies
+### 2. Create virtual environment and install dependencies
 
 ```bash
-pip install fastapi uvicorn sqlalchemy asyncpg alembic psycopg2-binary pydantic
+To create and activate virtual environment:
+python -m venv venv
+venv\Scripts\activate
+To install all dependancies:
+pip install -r requirements.txt
 ```
 
 ### 3. Start PostgreSQL via Docker
