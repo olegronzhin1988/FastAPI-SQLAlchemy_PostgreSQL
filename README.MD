@@ -1,18 +1,40 @@
 # Employee-Department API
 
-A RESTful API for managing organizational structure — departments and employees. Built with FastAPI and SQLAlchemy 2.0, using PostgreSQL as the database and Alembic for schema migrations.
+![Python](https://img.shields.io/badge/Python-3.11+-blue?logo=python&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-0.100+-009688?logo=fastapi&logoColor=white)
+![SQLAlchemy](https://img.shields.io/badge/SQLAlchemy-2.0-red)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15+-336791?logo=postgresql&logoColor=white)
+![Tests](https://img.shields.io/badge/tests-pytest-brightgreen?logo=pytest)
+![License](https://img.shields.io/badge/license-MIT-lightgrey)
+
+A REST API for managing an organizational structure: departments with unlimited nesting depth and employees. Demonstrates recursive data structures, async ORM, and database schema migrations.
+
+---
+
+## Features
+
+- Unlimited department hierarchy depth (adjacency list pattern)
+- Recursive subtree retrieval with configurable depth
+- Cascade delete: removes all child departments and their employees
+- Reassign delete: moves employees to another department before deletion
+- Fully async stack (asyncpg + SQLAlchemy async)
+- Schema migrations via Alembic (tables are never created at app startup)
+- Tests run on SQLite in-memory — no PostgreSQL needed for testing
 
 ---
 
 ## Tech Stack
 
-- **FastAPI** — web framework
-- **SQLAlchemy 2.0** — ORM with async support
-- **PostgreSQL** — database
-- **asyncpg** — async PostgreSQL driver
-- **Alembic** — database migrations
-- **Pydantic v2** — data validation and serialization
-- **Docker** — database container
+| Layer | Technology |
+|---|---|
+| Web framework | FastAPI |
+| ORM | SQLAlchemy 2.0 (async) |
+| Database | PostgreSQL 15+ |
+| Async driver | asyncpg |
+| Migrations | Alembic |
+| Validation | Pydantic v2 |
+| Tests | pytest + pytest-asyncio + httpx |
+| DB container | Docker |
 
 ---
 
@@ -20,12 +42,15 @@ A RESTful API for managing organizational structure — departments and employee
 
 ```
 ├── main.py                          # FastAPI app entry point
-├── database.py                      # Database engine, session, base model
+├── database.py                      # Engine, session, base model
 ├── alembic.ini                      # Alembic configuration
-├── migrations/                      # Alembic migrations folder
+├── compose.yaml                     # Docker Compose for PostgreSQL
+├── pytest.ini                       # pytest configuration
+├── requirements.txt
+├── migrations/
 │   ├── env.py
 │   └── versions/
-│       └── 81048bacbb65_init.py     # Initial migration (departments + employees)
+│       └── 81048bacbb65_init.py     # Initial migration
 ├── models/
 │   └── departments_employees.py     # SQLAlchemy ORM models
 ├── schemas/
@@ -34,21 +59,10 @@ A RESTful API for managing organizational structure — departments and employee
 ├── routers/
 │   └── departments_employees.py     # API endpoints
 └── tests/
-    ├── conftest.py                   # Shared fixtures, models, app
-    ├── test_departments.py           # Department endpoint tests
-    └── test_employees.py             # Employee endpoint tests
+    ├── conftest.py                  # Fixtures, test app setup
+    ├── test_departments.py
+    └── test_employees.py
 ```
-
----
-
-## Features
-
-- Create, read, and delete departments
-- Self-referential parent-child department hierarchy (adjacency list)
-- Recursive department tree with configurable depth
-- Create employees and assign them to departments
-- Delete department with cascade (removes all children and employees)
-- Delete department with reassign (moves employees to another department before deleting)
 
 ---
 
@@ -62,133 +76,145 @@ A RESTful API for managing organizational structure — departments and employee
 ### 1. Clone the repository
 
 ```bash
-git clone <repository-url>
-cd <repository-folder>
+git clone https://github.com/olegronzhin1988/FastAPI-SQLAlchemy_PostgreSQL.git
+cd FastAPI-SQLAlchemy_PostgreSQL
 ```
 
-### 2. Create virtual environment and install dependencies
+### 2. Create a virtual environment and install dependencies
 
 ```bash
-To create and activate virtual environment:
 python -m venv venv
+# Windows
 venv\Scripts\activate
-To install all dependancies:
+# Linux / macOS
+source venv/bin/activate
+
 pip install -r requirements.txt
 ```
 
-### 3. Start PostgreSQL via Docker
+### 3. Create the environment file
+
+Copy `.env.example` and fill in your values:
 
 ```bash
-docker run --name departments-db \
-  -e POSTGRES_USER=user \
-  -e POSTGRES_PASSWORD=pass \
-  -e POSTGRES_DB=departments \
-  -p 5432:5432 \
-  -d postgres
+cp .env.example .env
 ```
 
-### 4. Configure database URL
-
-In `database.py`:
-```python
-DATABASE_URL = "postgresql+asyncpg://user:pass@localhost:5432/departments"
+`.env.example`:
+```env
+POSTGRES_USER=user
+POSTGRES_PASSWORD=pass
+POSTGRES_DB=departments
+POSTGRES_HOST=localhost
+POSTGRES_PORT=5432
 ```
 
-In `alembic.ini`:
-```ini
-sqlalchemy.url = postgresql+psycopg2://user:pass@localhost:5432/departments
+### 4. Start PostgreSQL via Docker Compose
+
+```bash
+docker compose up -d
 ```
 
-### 5. Run migrations
+### 5. Apply migrations
 
 ```bash
 alembic upgrade head
 ```
 
-### 6. Start the application
+### 6. Run the application
 
 ```bash
 python main.py
 ```
 
-API will be available at `http://127.0.0.1:8000`.
-Interactive docs at `http://127.0.0.1:8000/docs`.
+API available at `http://127.0.0.1:8000`  
+Interactive docs: `http://127.0.0.1:8000/docs`
 
 ---
 
-## API Endpoints
+## API
 
 ### Departments
 
 | Method | Endpoint | Description |
-|--------|----------|-------------|
-| `POST` | `/departments/` | Create a new department |
-| `GET` | `/departments/{id}` | Get department with employees and subdepartments |
-| `PATCH` | `/departments/{id}` | Update department name or parent |
+|---|---|---|
+| `POST` | `/departments/` | Create a department |
+| `GET` | `/departments/{id}` | Get department with employees and subtree |
+| `PATCH` | `/departments/{id}` | Update name or parent |
 | `DELETE` | `/departments/{id}` | Delete department (cascade or reassign) |
 
-#### GET `/departments/{id}` query parameters
+#### Query parameters — GET `/departments/{id}`
 
 | Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `include_employees` | bool | `true` | Include employees in response |
-| `depth` | int | `1` | Depth of subdepartment tree (1–5) |
+|---|---|---|---|
+| `include_employees` | bool | `true` | Include employees in the response |
+| `depth` | int | `1` | Subtree depth (1–5) |
 
-#### DELETE `/departments/{id}` query parameters
+#### Query parameters — DELETE `/departments/{id}`
 
 | Parameter | Type | Description |
-|-----------|------|-------------|
-| `mode` | `cascade` \| `reassign` | Delete mode |
-| `reassign_to_department_id` | int | Required when mode is `reassign` |
+|---|---|---|
+| `mode` | `cascade` \| `reassign` | Deletion mode |
+| `reassign_to_department_id` | int | Required when `mode=reassign` |
 
 ### Employees
 
 | Method | Endpoint | Description |
-|--------|----------|-------------|
-| `POST` | `/departments/employees/` | Create a new employee |
+|---|---|---|
+| `POST` | `/departments/employees/` | Create an employee |
 
 ---
 
-## Database Migrations
+## Request Examples
 
-Migrations are managed by Alembic. Tables are **not** created automatically on app startup — always use Alembic.
-
+**Create a root department:**
 ```bash
-# Apply all migrations
-alembic upgrade head
+curl -X POST http://127.0.0.1:8000/departments/ \
+  -H "Content-Type: application/json" \
+  -d '{"name": "Engineering"}'
+```
+```json
+{"id": 1, "name": "Engineering", "parent_id": null}
+```
 
-# Roll back all migrations
-alembic downgrade base
+**Create a child department:**
+```bash
+curl -X POST http://127.0.0.1:8000/departments/ \
+  -H "Content-Type: application/json" \
+  -d '{"name": "Backend", "parent_id": 1}'
+```
 
-# Roll back one step
-alembic downgrade -1
+**Get department tree with depth 3:**
+```bash
+curl "http://127.0.0.1:8000/departments/1?depth=3&include_employees=true"
+```
+```json
+{
+  "id": 1,
+  "name": "Engineering",
+  "parent_id": null,
+  "employees": [{"id": 5, "name": "Alice", "position": "CTO"}],
+  "subdepartments": [
+    {
+      "id": 2,
+      "name": "Backend",
+      "employees": [...],
+      "subdepartments": [...]
+    }
+  ]
+}
+```
 
-# View migration history
-alembic history
-
-# Check current migration
-alembic current
-
-# Generate a new migration after model changes
-alembic revision --autogenerate -m "description"
+**Delete a department and reassign its employees:**
+```bash
+curl -X DELETE "http://127.0.0.1:8000/departments/2?mode=reassign&reassign_to_department_id=1"
 ```
 
 ---
 
-## Running Tests
+## Department Hierarchy
 
-Tests use SQLite in-memory database — no PostgreSQL required.
-
-```bash
-pip install pytest pytest-asyncio httpx aiosqlite
-pytest tests/ -v --asyncio-mode=auto
-```
-
----
-
-## Department Tree Example
-
-A department can have a parent and multiple children, forming a hierarchy:
+Each department stores a `parent_id` foreign key pointing back to the same table (adjacency list). Example structure:
 
 ```
 Company
@@ -199,4 +225,56 @@ Company
     └── SEO
 ```
 
-Each department stores its `parent_id` as a foreign key referencing the same table (adjacency list pattern).
+---
+
+## Migrations
+
+Tables are created **only via Alembic**, never at application startup.
+
+```bash
+# Apply all migrations
+alembic upgrade head
+
+# Roll back one migration
+alembic downgrade -1
+
+# Roll back all migrations
+alembic downgrade base
+
+# Generate a new migration after changing models
+alembic revision --autogenerate -m "add salary column"
+
+# Show migration history
+alembic history
+
+# Show current revision
+alembic current
+```
+
+---
+
+## Tests
+
+Tests use an SQLite in-memory database — no PostgreSQL required.
+
+```bash
+pip install pytest pytest-asyncio httpx aiosqlite
+
+# Run tests
+pytest tests/ -v --asyncio-mode=auto
+
+# With coverage report
+pytest tests/ -v --asyncio-mode=auto --cov=. --cov-report=term-missing
+```
+
+Coverage includes: creating and deleting departments, cascade delete, employee reassignment, and edge cases (non-existent department, invalid `parent_id`).
+
+---
+
+## Known Limitations / TODO
+
+- [ ] Authentication and authorization (JWT)
+- [ ] Pagination for employee lists
+- [ ] Endpoints for updating and deleting employees
+- [ ] GitHub Actions CI (auto-run tests on every PR)
+- [ ] Load settings via `pydantic-settings` instead of hardcoding in `database.py`

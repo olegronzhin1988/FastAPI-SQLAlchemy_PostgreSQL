@@ -22,7 +22,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(lifespan = lifespan,
               title = "Employee-Department API",
               description = "Organizational structure API, used to create dependances between dfferent departments and employees",
-              version = "1.0.0")
+              version = "1.0.2")
 
 # Connecting routers
 app.include_router(departments_employees_router)
